@@ -1,4 +1,6 @@
 const prompt = require("prompt-sync")();
+const fs = require("fs");
+const xml2js = require("xml2js");
 
 function questao1() {
   let indice = 13;
@@ -36,24 +38,65 @@ function questao2() {
   }
 }
 
-function questao3() {
-  const dados = {
-    faturamento: [
-      0, 22174.1664, 24537.6698, 26139.6134, 0, 0, 0, 25681.8318, 0, 0,
-      30059.0456, 0, 0, 0, 12000.1234, 0, 0, 12345.6789,
-    ],
-  };
-  const faturamento = dados.faturamento.filter((valor) => valor > 0);
+async function questao3() {
+  let faturamento = [];
+
+  try {
+    // Carregar dados do JSON
+    if (fs.existsSync("faturamento.json")) {
+      const jsonData = JSON.parse(fs.readFileSync("faturamento.json", "utf8"));
+      faturamento = faturamento.concat(jsonData.map((item) => item.valor)); // Adiciona valores ao array
+      console.log("Dados carregados do JSON.");
+    }
+
+    // Carregar dados do XML
+    if (fs.existsSync("faturamento.xml")) {
+      const xmlData = fs.readFileSync("faturamento.xml", "utf8");
+      const parser = new xml2js.Parser();
+      const result = await new Promise((resolve, reject) =>
+        parser.parseString(xmlData, (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        })
+      );
+      const xmlFaturamento = result.rows.row.map((item) =>
+        parseFloat(item.valor[0])
+      );
+      faturamento = faturamento.concat(xmlFaturamento); // Adiciona valores ao array
+      console.log("Dados carregados do XML.");
+    }
+
+    // Caso nenhum dos arquivos seja encontrado
+    if (faturamento.length === 0) {
+      throw new Error("Nenhum dado de faturamento encontrado (JSON ou XML).");
+    }
+  } catch (error) {
+    console.error("Erro ao carregar os dados:", error.message);
+    return;
+  }
+
+  // Filtrar dias sem faturamento (valor > 0)
+  faturamento = faturamento.filter((valor) => valor > 0);
+
+  // Verificar se há dados válidos
+  if (faturamento.length === 0) {
+    console.log("Não há dados de faturamento válidos para processar.");
+    return;
+  }
+
+  // Calcular menor, maior e média de faturamento
   const menor = Math.min(...faturamento);
   const maior = Math.max(...faturamento);
   const media =
     faturamento.reduce((acc, valor) => acc + valor, 0) / faturamento.length;
+
+  // Contar dias com faturamento acima da média
   const diasAcimaMedia = faturamento.filter((dia) => dia > media).length;
-  console.log(`Questão 3 - Menor faturamento: ${menor}`);
-  console.log(`Questão 3 - Maior faturamento: ${maior}`);
-  console.log(
-    `Questão 3 - Dias com faturamento acima da média: ${diasAcimaMedia}`
-  );
+
+  // Exibir os resultados
+  console.log(`Menor faturamento: ${menor.toFixed(2)}`);
+  console.log(`Maior faturamento: ${maior.toFixed(2)}`);
+  console.log(`Dias com faturamento acima da média: ${diasAcimaMedia}`);
 }
 
 function questao4() {
